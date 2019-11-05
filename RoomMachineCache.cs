@@ -24,6 +24,15 @@ namespace ReikaKalseki.RoomEnvironmentals
 		public readonly Coordinate location;
 		public readonly RoomController controller;
 		
+		internal int area;
+		internal int volume;
+		private float powerRatio;
+		
+		private bool isChanging;
+		private bool lastChanging;
+		
+		private bool everCalculated;
+		
 		public RoomMachineCache(RoomController c) {
 			controller = c;
 			location = new Coordinate(c);
@@ -32,6 +41,19 @@ namespace ReikaKalseki.RoomEnvironmentals
 		public void addBelt(ConveyorEntity e) {
 			belts.Add(new Coordinate(e));
 		}*/
+		
+		public bool setChanging(bool changing) {
+			bool flag = !everCalculated;
+			everCalculated = true;
+			lastChanging = isChanging;
+			isChanging = changing;
+			powerRatio = isChanging ? 1 : Math.min(area/(float)volume, 1F);
+			return flag || lastChanging != changing;
+		}
+		
+		public float getPowerRatio() {
+			return powerRatio;
+		}
 		
 		public void reset() {
 			//belts.Clear();
@@ -43,7 +65,7 @@ namespace ReikaKalseki.RoomEnvironmentals
 		}
 		
 		public override string ToString() {
-			return "["+heaterPower+"/"+coolerPower+"/"+vaporPower+"] @ "+location.ToString();
+			return "["+heaterPower+"/"+coolerPower+"/"+vaporPower+"] ["+volume+"/"+area+"] @ "+location.ToString();
 		} 
 	}
 }

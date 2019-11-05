@@ -61,12 +61,13 @@ namespace ReikaKalseki.RoomEnvironmentals {
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) {
 			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
 			try {
-				FileLog.Log("Running patch at pos zero");
+				int loc = InstructionHandlers.getLastInstructionBefore(codes, codes.Count, OpCodes.Stfld, "RoomController", "mnVolume");
+				FileLog.Log("Running patch, which found anchor "+InstructionHandlers.toString(codes, loc));
 				List<CodeInstruction> inject = new List<CodeInstruction>();
 				inject.Add(new CodeInstruction(OpCodes.Ldarg_0));
-				inject.Add(InstructionHandlers.createMethodCall("ReikaKalseki.RoomEnvironmentals.RoomEnvironmentalsMod", "onRoomCalculateEnvironment", false, typeof(RoomController)));
+				inject.Add(InstructionHandlers.createMethodCall("ReikaKalseki.RoomEnvironmentals.RoomEnvironmentalsMod", "onRoomCalculateEnvironment", false, typeof(int), typeof(RoomController)));
 				FileLog.Log("Injecting "+inject.Count+" instructions: "+InstructionHandlers.toString(inject));
-				codes.InsertRange(0, inject);
+				codes.InsertRange(loc, inject);
 				FileLog.Log("Done patch "+MethodBase.GetCurrentMethod().DeclaringType);
 				//FileLog.Log("Codes are "+InstructionHandlers.toString(codes));
 			}
@@ -99,6 +100,32 @@ namespace ReikaKalseki.RoomEnvironmentals {
 					FileLog.Log("Injecting "+inject.Count+" instructions: "+InstructionHandlers.toString(inject));
 					codes.InsertRange(start, inject);
 				}
+				FileLog.Log("Done patch "+MethodBase.GetCurrentMethod().DeclaringType);
+			}
+			catch (Exception e) {
+				FileLog.Log("Caught exception when running patch "+MethodBase.GetCurrentMethod().DeclaringType+"!");
+				FileLog.Log(e.Message);
+				FileLog.Log(e.StackTrace);
+				FileLog.Log(e.ToString());
+			}
+			return codes.AsEnumerable();
+		}
+	}
+	
+	[HarmonyPatch(typeof(Room_Enviro))]
+	[HarmonyPatch("LowFrequencyUpdate")]
+	public static class RoomEnviroPPSUsePatch {
+		
+		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) {
+			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
+			try {
+				int start = 0;
+				FileLog.Log("Running patch, which found anchor "+InstructionHandlers.toString(codes, start));
+				List<CodeInstruction> inject = new List<CodeInstruction>();
+				inject.Add(new CodeInstruction(OpCodes.Ldarg_0));
+				inject.Add(InstructionHandlers.createMethodCall("ReikaKalseki.RoomEnvironmentals.RoomEnvironmentalsMod", "onRoomEnviroPPSCost", false, typeof(Room_Enviro)));
+				FileLog.Log("Injecting "+inject.Count+" instructions: "+InstructionHandlers.toString(inject));
+				codes.InsertRange(start, inject);
 				FileLog.Log("Done patch "+MethodBase.GetCurrentMethod().DeclaringType);
 			}
 			catch (Exception e) {
