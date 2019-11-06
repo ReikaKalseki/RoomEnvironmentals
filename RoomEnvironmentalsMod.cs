@@ -26,6 +26,7 @@ namespace ReikaKalseki.RoomEnvironmentals
     private const float COOLER_FACTOR = 15*COOLER_POWER_FRACTION;
     private const float VAPOR_FACTOR = 1*VAPOR_POWER_FRACTION;
     
+    private const float SMELTER_HEATER_VALUE = 0.2F;//0.5F;//1F;
     private const float BLAST_FURNACE_HEATER_VALUE = 2.5F;//3F;//5;
     private const float BLAST_BASIN_HEATER_VALUE = 0.5F;//1;//2;
     private const float C5_HEATER_VALUE = 12F;//10;//8;
@@ -65,42 +66,51 @@ namespace ReikaKalseki.RoomEnvironmentals
     public static void onRoomFindMachine(RoomController c, SegmentEntity e) {
     	//Debug.Log("Room controller @ "+new Coordinate(c)+" found entity "+e.GetType().Name+" @ "+new Coordinate(e));
     	RoomMachineCache cache = getOrCreateCache(c);
-    	if (e.mType == eSegmentEntity.Room_Enviro) {
-    		Room_Enviro re = e as Room_Enviro;
-    		if (re.ActiveAndWorking) {
-				if (re.mValue == (ushort) 0)
-					cache.heaterPower += HEATER_FACTOR;
-				if (re.mValue == (ushort) 1)
-					cache.coolerPower += COOLER_FACTOR;
-				if (re.mValue == (ushort) 2)
-					cache.vaporPower += VAPOR_FACTOR;
-    		}
-    		enviroRooms.Remove(re);
-    		enviroRooms.Add(re, cache.controller);
+    	switch(e.mType) {
+    		case eSegmentEntity.Room_Enviro:
+	    		Room_Enviro re = e as Room_Enviro;
+	    		if (re.ActiveAndWorking) {
+					if (re.mValue == (ushort) 0)
+						cache.heaterPower += HEATER_FACTOR;
+					if (re.mValue == (ushort) 1)
+						cache.coolerPower += COOLER_FACTOR;
+					if (re.mValue == (ushort) 2)
+						cache.vaporPower += VAPOR_FACTOR;
+	    		}
+	    		enviroRooms.Remove(re);
+	    		enviroRooms.Add(re, cache.controller);
+    		break;
+    		case eSegmentEntity.CCCCC:
+	    		CCCCC c5 = e as CCCCC;
+	    		if (c5.mbIsCenter && c5.mMBMState == MachineEntity.MBMState.Linked && CCCCC.ActiveAndWorking) {
+	    			cache.heaterPower += HEATER_FACTOR*C5_HEATER_VALUE;
+	    		}
+	    	break;
+	    	case eSegmentEntity.BlastFurnace:
+	    		BlastFurnace f = e as BlastFurnace;
+	    		if (f.mOperatingState == BlastFurnace.OperatingState.Smelting || f.mOperatingState == BlastFurnace.OperatingState.WaitingOnBasin) {
+	    			cache.heaterPower += HEATER_FACTOR*BLAST_FURNACE_HEATER_VALUE;
+	    		}
+	    	break;
+	    	case eSegmentEntity.OreSmelter:
+	    		OreSmelter s = e as OreSmelter;
+	    		if (s.mrTemperature > 5 && s.mrTargetTemp > 100) {
+	    			cache.heaterPower += HEATER_FACTOR*SMELTER_HEATER_VALUE*s.mrTemperature/s.mrTargetTemp;
+	    		}
+	    	break;
+	    	case eSegmentEntity.ContinuousCastingBasin:
+	    		if ((e as ContinuousCastingBasin).mMBMState == MachineEntity.MBMState.Linked) {
+	    			cache.heaterPower += HEATER_FACTOR*BLAST_BASIN_HEATER_VALUE;
+	    		}
+	    	break;
+	    	case eSegmentEntity.Conveyor:
+	    		ConveyorEntity belt = e as ConveyorEntity;
+	    		//cache.addBelt(e as ConveyorEntity);
+	    		//Coordinate loc = new Coordinate(e);
+	    		beltRooms.Remove(belt);
+	    		beltRooms.Add(belt, cache.controller);
+	    	break;
     	}
-    	else if (e.mType == eSegmentEntity.CCCCC) {
-    		CCCCC c5 = e as CCCCC;
-    		if (c5.mbIsCenter && c5.mMBMState == MachineEntity.MBMState.Linked && CCCCC.ActiveAndWorking) {
-    			cache.heaterPower += HEATER_FACTOR*C5_HEATER_VALUE;
-    		}
-    	}
-    	else if (e.mType == eSegmentEntity.BlastFurnace) {
-    		BlastFurnace f = e as BlastFurnace;
-    		if (f.mOperatingState == BlastFurnace.OperatingState.Smelting || f.mOperatingState == BlastFurnace.OperatingState.WaitingOnBasin) {
-    			cache.heaterPower += HEATER_FACTOR*BLAST_FURNACE_HEATER_VALUE;
-    		}
-    	}
-    	else if (e.mType == eSegmentEntity.ContinuousCastingBasin && (e as ContinuousCastingBasin).mMBMState == MachineEntity.MBMState.Linked) {
-    		cache.heaterPower += HEATER_FACTOR*BLAST_BASIN_HEATER_VALUE;
-    	}
-    	else if (e.mType == eSegmentEntity.Conveyor) {
-    		ConveyorEntity belt = e as ConveyorEntity;
-    		//cache.addBelt(e as ConveyorEntity);
-    		//Coordinate loc = new Coordinate(e);
-    		beltRooms.Remove(belt);
-    		beltRooms.Add(belt, cache.controller);
-    	}
-    	
     	//Debug.Log("Room controller @ "+new Coordinate(c)+" has "+cache);
     }
     
@@ -108,13 +118,9 @@ namespace ReikaKalseki.RoomEnvironmentals
     	RoomMachineCache cache = getOrCreateCache(c);
     	//Debug.Log("Room controller @ "+new Coordinate(c)+" loaded "+cache);
     	
-    	float f = 1;//isStillChangingTemp(c) ? 1 : originalVolume/(float)getSurfaceArea(c);
-    	
-    	//Debug.Log("Room controller @ "+new Coordinate(c)+" loaded "+cache+" multiplied against "+f+" since "+isStillChangingTemp(c));
-    	
-    	c.NumHeaters = (int)(cache.heaterPower*f);
-    	c.NumCoolers = (int)(cache.coolerPower*f);
-    	c.NumMoistureEmitters = (int)(cache.vaporPower*f);
+    	c.NumHeaters = (int)(cache.heaterPower);
+    	c.NumCoolers = (int)(cache.coolerPower);
+    	c.NumMoistureEmitters = (int)(cache.vaporPower);
     	//c.NumFilters = (int)Math.Round(cache.filterPower);
     	
     	//foreach (ConveyorEntity e in cache.getBelts()) {
@@ -128,7 +134,7 @@ namespace ReikaKalseki.RoomEnvironmentals
     	}
     	cache.reset();
     	
-    	return originalVolume;//isStillChangingTemp(c) ? originalVolume : getSurfaceArea(c);
+    	return originalVolume;
     }
     
     private static bool isStillChangingTemp(RoomController c) {
@@ -149,8 +155,6 @@ namespace ReikaKalseki.RoomEnvironmentals
 	    	if (rc != null && rc.mrHeatModulation >= 1) {
 			   	e.mbConveyorFrozen = false;
 			   	e.mnCurrentPenaltyFactor = 0;
-			   	//e.mbConveyorToxic = false;
-			   	//e.mbHoloDirty = true;
 			   	return 0;
 	    	}
     	}
@@ -167,7 +171,7 @@ namespace ReikaKalseki.RoomEnvironmentals
 	   	if (enviroRooms.TryGetValue(e, out rc)) {
     		RoomMachineCache cache = getOrCreateCache(rc);
     		e.PPS = getRoomEnviroPPS(e)*cache.getPowerRatio();
-	    	//Debug.Log("Overriding room enviro @ "+new Coordinate(e)+" to base consumption "+e.PPS+" PPS");
+	    	//Debug.Log("Overriding room enviro @ "+new Coordinate(e)+" to dynamic consumption "+e.PPS+" PPS");
     	}
     }
     

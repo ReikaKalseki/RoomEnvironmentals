@@ -47,7 +47,7 @@ namespace ReikaKalseki.RoomEnvironmentals
 			everCalculated = true;
 			lastChanging = isChanging;
 			isChanging = changing;
-			powerRatio = isChanging ? 1 : Math.min(area/(float)volume, 1F);
+			powerRatio = isChanging ? 1 : Math.Min(area/(float)volume, 1F);
 			return flag || lastChanging != changing;
 		}
 		
