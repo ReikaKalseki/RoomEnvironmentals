@@ -22,14 +22,14 @@ namespace ReikaKalseki.RoomEnvironmentals
     private const float COOLER_POWER_FRACTION = 0.4F;
     private const float VAPOR_POWER_FRACTION = 1F;
     
-    private const float HEATER_FACTOR = 20*HEATER_POWER_FRACTION;
-    private const float COOLER_FACTOR = 15*COOLER_POWER_FRACTION;
+    private const float HEATER_FACTOR = /*20*/16*HEATER_POWER_FRACTION;
+    private const float COOLER_FACTOR = /*15*/12*COOLER_POWER_FRACTION;
     private const float VAPOR_FACTOR = 1*VAPOR_POWER_FRACTION;
     
     private const float SMELTER_HEATER_VALUE = 0.2F;//0.5F;//1F;
     private const float BLAST_FURNACE_HEATER_VALUE = 2.5F;//3F;//5;
     private const float BLAST_BASIN_HEATER_VALUE = 0.5F;//1;//2;
-    private const float C5_HEATER_VALUE = 12F;//10;//8;
+    private const float C5_HEATER_VALUE = 24F;//18F;//12F;//10;//8;
     
     private static readonly Dictionary<RoomController, RoomMachineCache> roomCache = new Dictionary<RoomController, RoomMachineCache>();
     private static readonly Dictionary<ConveyorEntity, RoomController> beltRooms = new Dictionary<ConveyorEntity, RoomController>();
@@ -48,6 +48,7 @@ namespace ReikaKalseki.RoomEnvironmentals
          */        
         var harmony = HarmonyInstance.Create("ReikaKalseki.RoomEnvironmentals");
         HarmonyInstance.DEBUG = true;
+        //FileLog.Reset(); //clears output from other mods
         FileLog.Log("Ran mod register, started harmony (harmony log)");
         Debug.Log("Ran mod register, started harmony");
         try {
