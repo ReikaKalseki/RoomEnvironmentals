@@ -64,6 +64,36 @@ namespace ReikaKalseki.RoomEnvironmentals
         return registrationData;
     }
     
+    public static float getGrappleCooldown(float orig) {
+    	LocalPlayerScript p = WorldScript.instance.localPlayerInstance;
+    	return isRoomProtected(p) ? Math.Min(orig, 0.1F) : orig;
+    }
+    
+    private static bool isRoomProtected(LocalPlayerScript ep) {
+    	if (CCCCC.ActiveAndWorking && Math.Abs(CCCCC.CCCCC_X-ep.mWorldX)+Math.Abs(CCCCC.CCCCC_Y-ep.mWorldY)+Math.Abs(CCCCC.CCCCC_Z-ep.mWorldZ) <= 24)
+    		return true;
+    	/*
+    	int id = ep.CurrentRoomID;
+    	if (id < 0)
+    		return false;
+    	RoomController room = tryFindRoomByID(id);
+    	if (room == null)
+    		return false;
+    	long num = room.mnY - 4611686017890516992L;
+		if (num < (long)BiomeLayer.CavernColdCeiling && num > (long)BiomeLayer.CavernColdFloor) {
+    		return room.mrHeatModulation >= 1;
+    	}
+		if (num < (long)BiomeLayer.CavernMagmaCeiling && num > (long)BiomeLayer.CavernMagmaFloor) {
+    		return room.mrHeatModulation <= -1;
+    	}
+		if (num < (long)BiomeLayer.CavernToxicCeiling && num > (long)BiomeLayer.CavernToxicFloor) {
+    		return room.mrToxicRating >= 1;
+    	}
+    	return false;
+    	*/
+    	return ep.CooledRoomLatch > 0.2 || ep.HeatedRoomLatch > 0.2 || ep.ToxicRoomLatch > 0.2;
+    }
+    
     public static void onRoomFindMachine(RoomController c, SegmentEntity e) {
     	//Debug.Log("Room controller @ "+new Coordinate(c)+" found entity "+e.GetType().Name+" @ "+new Coordinate(e));
     	RoomMachineCache cache = getOrCreateCache(c);

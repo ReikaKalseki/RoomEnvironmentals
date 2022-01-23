@@ -167,4 +167,39 @@ namespace ReikaKalseki.RoomEnvironmentals {
 			return codes.AsEnumerable();
 		}
 	}
+	
+	[HarmonyPatch(typeof(SurvivalGrapplingHook))]
+	[HarmonyPatch("Update")]
+	public static class GrappleClimateMk3Bypass {
+		
+		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) {
+			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
+			try {
+				FileLog.Log("Running patch "+MethodBase.GetCurrentMethod().DeclaringType);
+				for (int i = 0; i < codes.Count; i++) {
+					CodeInstruction ci = codes[i];
+					if (ci.opcode == OpCodes.Stfld) {
+						CodeInstruction cp = codes[i-1];
+						if (cp.opcode == OpCodes.Ldc_R4) {
+							FieldInfo look = InstructionHandlers.convertFieldOperand("SurvivalGrapplingHook", "mrGrappleDebounce");
+							if (ci.operand == look) {
+								FileLog.Log("Found match at pos "+InstructionHandlers.toString(codes, i));
+								CodeInstruction call = InstructionHandlers.createMethodCall("ReikaKalseki.RoomEnvironmentals.RoomEnvironmentalsMod", "getGrappleCooldown", false, new Type[]{typeof(float)});
+								codes.Insert(i, call);
+							}
+						}
+					}
+				}
+				FileLog.Log("Done patch "+MethodBase.GetCurrentMethod().DeclaringType);
+			}
+			catch (Exception e) {
+				FileLog.Log("Caught exception when running patch "+MethodBase.GetCurrentMethod().DeclaringType+"!");
+				FileLog.Log(e.Message);
+				FileLog.Log(e.StackTrace);
+				FileLog.Log(e.ToString());
+			}
+			return codes.AsEnumerable();
+		}
+	}
+	
 }
