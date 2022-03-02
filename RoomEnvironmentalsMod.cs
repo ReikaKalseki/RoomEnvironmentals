@@ -30,6 +30,7 @@ namespace ReikaKalseki.RoomEnvironmentals
     private const float BLAST_FURNACE_HEATER_VALUE = 2.5F;//3F;//5;
     private const float BLAST_BASIN_HEATER_VALUE = 0.5F;//1;//2;
     private const float C5_HEATER_VALUE = 24F;//18F;//12F;//10;//8;
+    private const float GEO_HEATER_VALUE = 0.05F; //tiny because applies for each block 
     
     private static readonly Dictionary<RoomController, RoomMachineCache> roomCache = new Dictionary<RoomController, RoomMachineCache>();
     private static readonly Dictionary<ConveyorEntity, RoomController> beltRooms = new Dictionary<ConveyorEntity, RoomController>();
@@ -64,7 +65,7 @@ namespace ReikaKalseki.RoomEnvironmentals
         return registrationData;
     }
     
-    public static float getGrappleCooldown(float orig) {
+    public static float getGrappleCooldownFromRoom(float orig) {
     	LocalPlayerScript p = WorldScript.instance.localPlayerInstance;
     	return isRoomProtected(p) ? Math.Min(orig, 0.1F) : orig;
     }
@@ -132,6 +133,16 @@ namespace ReikaKalseki.RoomEnvironmentals
 	    	case eSegmentEntity.ContinuousCastingBasin:
 	    		if ((e as ContinuousCastingBasin).mMBMState == MachineEntity.MBMState.Linked) {
 	    			cache.heaterPower += HEATER_FACTOR*BLAST_BASIN_HEATER_VALUE;
+	    		}
+	    	break;
+	    	case eSegmentEntity.GeothermalGenerator:
+	    		GeothermalGenerator gen = e as GeothermalGenerator;
+	    		if (gen.mMBMState == MachineEntity.MBMState.Linked) {
+	    			long y = gen.mShaftEndY - 4611686017890516992L;
+	    			if (y <= -1000) {
+	    				float hf = Math.Min(1F, (Math.Abs(y)-1000)/120F);
+		    			cache.heaterPower += HEATER_FACTOR*GEO_HEATER_VALUE*hf;
+	    			}
 	    		}
 	    	break;
 	    	case eSegmentEntity.Conveyor:

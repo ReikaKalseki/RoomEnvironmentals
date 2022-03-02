@@ -170,7 +170,7 @@ namespace ReikaKalseki.RoomEnvironmentals {
 	
 	[HarmonyPatch(typeof(SurvivalGrapplingHook))]
 	[HarmonyPatch("Update")]
-	public static class GrappleClimateMk3Bypass {
+	public static class GrappleRoomBypass {
 		
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) {
 			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
@@ -180,12 +180,13 @@ namespace ReikaKalseki.RoomEnvironmentals {
 					CodeInstruction ci = codes[i];
 					if (ci.opcode == OpCodes.Stfld) {
 						CodeInstruction cp = codes[i-1];
-						if (cp.opcode == OpCodes.Ldc_R4) {
-							FieldInfo look = InstructionHandlers.convertFieldOperand("SurvivalGrapplingHook", "mrGrappleDebounce");
-							if (ci.operand == look) {
+						if (cp.opcode == OpCodes.Ldc_R4 || (cp.opcode == OpCodes.Call && cp.operand is MethodInfo && ((MethodInfo)cp.operand).DeclaringType.BaseType == typeof(FortressCraftMod))) { //Mod compat
+							FieldInfo look = cp.opcode == OpCodes.Call ? null : InstructionHandlers.convertFieldOperand("SurvivalGrapplingHook", "mrGrappleDebounce");
+							if (ci.operand == look || cp.opcode == OpCodes.Call) {
 								FileLog.Log("Found match at pos "+InstructionHandlers.toString(codes, i));
-								CodeInstruction call = InstructionHandlers.createMethodCall("ReikaKalseki.RoomEnvironmentals.RoomEnvironmentalsMod", "getGrappleCooldown", false, new Type[]{typeof(float)});
+								CodeInstruction call = InstructionHandlers.createMethodCall("ReikaKalseki.RoomEnvironmentals.RoomEnvironmentalsMod", "getGrappleCooldownFromRoom", false, new Type[]{typeof(float)});
 								codes.Insert(i, call);
+								i += 2;
 							}
 						}
 					}
