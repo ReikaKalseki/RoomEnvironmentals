@@ -4,7 +4,7 @@ using System;    //For data read/write methods
 using System.Collections.Generic;   //Working with Lists and Collections
 using System.Linq;   //More advanced manipulation of lists/collections
 using Harmony;
-using ReikaKalseki;
+using ReikaKalseki.FortressCore;
 
 namespace ReikaKalseki.RoomEnvironmentals
 {
