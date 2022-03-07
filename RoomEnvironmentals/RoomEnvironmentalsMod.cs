@@ -51,9 +51,9 @@ namespace ReikaKalseki.RoomEnvironmentals
         HarmonyInstance.DEBUG = true;
         //FileLog.Reset(); //clears output from other mods
         FileLog.Log("Ran mod register, started harmony (harmony log)");
-        Debug.Log("Ran mod register, started harmony");
+        FUtil.log("Ran mod register, started harmony");
         try {
-			harmony.PatchAll();
+        	harmony.PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
         }
         catch (Exception e) {
 			FileLog.Log("Caught exception when running patcher!");
@@ -95,9 +95,11 @@ namespace ReikaKalseki.RoomEnvironmentals
     	return ep.CooledRoomLatch > 0.2 || ep.HeatedRoomLatch > 0.2 || ep.ToxicRoomLatch > 0.2;
     }
     
-    public static void onRoomFindMachine(RoomController c, SegmentEntity e) {
-    	//Debug.Log("Room controller @ "+new Coordinate(c)+" found entity "+e.GetType().Name+" @ "+new Coordinate(e));
+    public static void onRoomFindMachine(RoomController c,  SegmentEntity e) {
+    	FUtil.log("Room controller @ "+new Coordinate(c)+" found entity "+e.GetType().Name+" @ "+new Coordinate(e));
+    	
     	RoomMachineCache cache = getOrCreateCache(c);
+    	bool significant = false;
     	switch(e.mType) {
     		case eSegmentEntity.Room_Enviro:
 	    		Room_Enviro re = e as Room_Enviro;
@@ -116,23 +118,27 @@ namespace ReikaKalseki.RoomEnvironmentals
 	    		CCCCC c5 = e as CCCCC;
 	    		if (c5.mbIsCenter && c5.mMBMState == MachineEntity.MBMState.Linked && CCCCC.ActiveAndWorking) {
 	    			cache.heaterPower += HEATER_FACTOR*C5_HEATER_VALUE;
+	    			significant = true;
 	    		}
 	    	break;
 	    	case eSegmentEntity.BlastFurnace:
 	    		BlastFurnace f = e as BlastFurnace;
 	    		if (f.mOperatingState == BlastFurnace.OperatingState.Smelting || f.mOperatingState == BlastFurnace.OperatingState.WaitingOnBasin) {
 	    			cache.heaterPower += HEATER_FACTOR*BLAST_FURNACE_HEATER_VALUE;
+	    			significant = true;
 	    		}
 	    	break;
 	    	case eSegmentEntity.OreSmelter:
 	    		OreSmelter s = e as OreSmelter;
 	    		if (s.mrTemperature > 5 && s.mrTargetTemp > 100) {
 	    			cache.heaterPower += HEATER_FACTOR*SMELTER_HEATER_VALUE*s.mrTemperature/s.mrTargetTemp;
+	    			significant = true;
 	    		}
 	    	break;
 	    	case eSegmentEntity.ContinuousCastingBasin:
 	    		if ((e as ContinuousCastingBasin).mMBMState == MachineEntity.MBMState.Linked) {
 	    			cache.heaterPower += HEATER_FACTOR*BLAST_BASIN_HEATER_VALUE;
+	    			significant = true;
 	    		}
 	    	break;
 	    	case eSegmentEntity.GeothermalGenerator:
@@ -142,6 +148,7 @@ namespace ReikaKalseki.RoomEnvironmentals
 	    			if (y <= -1000) {
 	    				float hf = Math.Min(1F, (Math.Abs(y)-1000)/120F);
 		    			cache.heaterPower += HEATER_FACTOR*GEO_HEATER_VALUE*hf;
+	    				significant = true;
 	    			}
 	    		}
 	    	break;
@@ -153,12 +160,13 @@ namespace ReikaKalseki.RoomEnvironmentals
 	    		beltRooms.Add(belt, cache.controller);
 	    	break;
     	}
-    	//Debug.Log("Room controller @ "+new Coordinate(c)+" has "+cache);
+    	if (significant)
+    		FUtil.log("Room controller @ "+new Coordinate(c)+" found "+Enum.GetName(typeof(eSegmentEntity), e)+" "+e+" and now has "+cache);
     }
     
     public static int onRoomCalculateEnvironment(int originalVolume, RoomController c) {
     	RoomMachineCache cache = getOrCreateCache(c);
-    	//Debug.Log("Room controller @ "+new Coordinate(c)+" loaded "+cache);
+    	//FUtil.log("Room controller @ "+new Coordinate(c)+" loaded "+cache);
     	
     	c.NumHeaters = (int)(cache.heaterPower);
     	c.NumCoolers = (int)(cache.coolerPower);
@@ -172,7 +180,7 @@ namespace ReikaKalseki.RoomEnvironmentals
     	cache.volume = originalVolume;
     	cache.area = getSurfaceArea(c);
     	if (cache.setChanging(isStillChangingTemp(c))) {
-    		Debug.Log("Room controller @ "+new Coordinate(c)+" with "+cache+" just changed state; all enviros now have a power ratio of "+cache.getPowerRatio());
+    		FUtil.log("Room controller @ "+new Coordinate(c)+" with "+cache+" just changed state; all enviros now have a power ratio of "+cache.getPowerRatio());
     	}
     	cache.reset();
     	
@@ -205,7 +213,7 @@ namespace ReikaKalseki.RoomEnvironmentals
     
     public static void onRoomEnviroPPSCalculation(Room_Enviro e) {
     	e.PPS = getRoomEnviroPPS(e);
-    	Debug.Log("Overriding room enviro @ "+new Coordinate(e)+" to base consumption "+e.PPS+" PPS");
+    	FUtil.log("Overriding room enviro @ "+new Coordinate(e)+" to base consumption "+e.PPS+" PPS");
     }
     
     public static void onRoomEnviroPPSCost(Room_Enviro e) {
@@ -213,7 +221,7 @@ namespace ReikaKalseki.RoomEnvironmentals
 	   	if (enviroRooms.TryGetValue(e, out rc)) {
     		RoomMachineCache cache = getOrCreateCache(rc);
     		e.PPS = getRoomEnviroPPS(e)*cache.getPowerRatio();
-	    	//Debug.Log("Overriding room enviro @ "+new Coordinate(e)+" to dynamic consumption "+e.PPS+" PPS");
+	    	//FUtil.log("Overriding room enviro @ "+new Coordinate(e)+" to dynamic consumption "+e.PPS+" PPS");
     	}
     }
     
@@ -242,7 +250,7 @@ namespace ReikaKalseki.RoomEnvironmentals
     	RoomMachineCache get = null;
     	//Coordinate loc = new Coordinate(c);
     	if (!roomCache.TryGetValue(c, out get)) {
-    		Debug.Log("Creating new cache for room @ "+new Coordinate(c));
+    		FUtil.log("Creating new cache for room @ "+new Coordinate(c));
     		get = new RoomMachineCache(c);
     		roomCache.Add(c, get);
     	}

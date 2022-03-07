@@ -24,20 +24,23 @@ namespace ReikaKalseki.RoomEnvironmentals {
 	public static class RoomControllerPatch {
 		
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) {
+			//FileLog.Log(System.Reflection.Assembly.GetExecutingAssembly().GetName().Name+": running patch roomcontroller from trace "+System.Environment.StackTrace);
 			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
 			try {
-				int start = InstructionHandlers.getInstruction(codes, 0, 0, OpCodes.Isinst, "Room_Enviro")-1;
-				int startAll = InstructionHandlers.getLastInstructionBefore(codes, start, codes[start].opcode, codes[start].operand);
+				int start0 = InstructionHandlers.getInstruction(codes, 0, 0, OpCodes.Isinst, "Room_Enviro")-1;
+				int start = InstructionHandlers.getLastInstructionBefore(codes, start0, codes[start0].opcode, ((LocalBuilder)codes[start0].operand).LocalIndex);
+				//start = InstructionHandlers.getLastInstructionBefore(codes, start0, codes[start0].opcode, ((LocalBuilder)codes[start0].operand).LocalIndex);
+				//start = InstructionHandlers.getLastInstructionBefore(codes, start0, codes[start0].opcode, ((LocalBuilder)codes[start0].operand).LocalIndex);
 				object operand = codes[start].operand;
 				int end = InstructionHandlers.getInstruction(codes, start, 0, OpCodes.Stfld, "RoomController", "NumHeaters");
 				FileLog.Log("Running patch, which found anchors "+InstructionHandlers.toString(codes, start)+" and "+InstructionHandlers.toString(codes, end));
 				if (end > start && end >= 0) {
-					InstructionHandlers.nullInstructions(codes, startAll, start);
+					//InstructionHandlers.nullInstructions(codes, startAll, start);
 					codes.RemoveRange(start, end-start+1);
 					FileLog.Log("Deletion of range successful, injecting new instructions");
 					List<CodeInstruction> inject = new List<CodeInstruction>();
 					inject.Add(new CodeInstruction(OpCodes.Ldarg_0));
-					inject.Add(new CodeInstruction(OpCodes.Ldloc, operand));
+					inject.Add(new CodeInstruction(OpCodes.Ldloc_S, operand));
 					inject.Add(InstructionHandlers.createMethodCall("ReikaKalseki.RoomEnvironmentals.RoomEnvironmentalsMod", "onRoomFindMachine", false, typeof(RoomController), typeof(SegmentEntity)));
 					FileLog.Log("Injecting "+inject.Count+" instructions: "+InstructionHandlers.toString(inject));
 					codes.InsertRange(start, inject);
