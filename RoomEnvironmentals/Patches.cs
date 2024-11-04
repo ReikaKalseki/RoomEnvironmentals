@@ -27,12 +27,12 @@ namespace ReikaKalseki.RoomEnvironmentals {
 			//FileLog.Log(System.Reflection.Assembly.GetExecutingAssembly().GetName().Name+": running patch roomcontroller from trace "+System.Environment.StackTrace);
 			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
 			try {
-				int start0 = InstructionHandlers.getInstruction(codes, 0, 0, OpCodes.Isinst, "Room_Enviro")-1;
+				int start0 = InstructionHandlers.getInstruction(codes, 0, 0, OpCodes.Isinst, typeof(Room_Enviro))-1;
 				int start = InstructionHandlers.getLastInstructionBefore(codes, start0, codes[start0].opcode, ((LocalBuilder)codes[start0].operand).LocalIndex);
 				//start = InstructionHandlers.getLastInstructionBefore(codes, start0, codes[start0].opcode, ((LocalBuilder)codes[start0].operand).LocalIndex);
 				//start = InstructionHandlers.getLastInstructionBefore(codes, start0, codes[start0].opcode, ((LocalBuilder)codes[start0].operand).LocalIndex);
 				object operand = codes[start].operand;
-				int end = InstructionHandlers.getInstruction(codes, start, 0, OpCodes.Stfld, "RoomController", "NumHeaters");
+				int end = InstructionHandlers.getInstruction(codes, start, 0, OpCodes.Stfld, typeof(RoomController), "NumHeaters");
 				FileLog.Log("Running patch, which found anchors "+InstructionHandlers.toString(codes, start)+" and "+InstructionHandlers.toString(codes, end));
 				if (end > start && end >= 0) {
 					//InstructionHandlers.nullInstructions(codes, startAll, start);
@@ -41,7 +41,7 @@ namespace ReikaKalseki.RoomEnvironmentals {
 					List<CodeInstruction> inject = new List<CodeInstruction>();
 					inject.Add(new CodeInstruction(OpCodes.Ldarg_0));
 					inject.Add(new CodeInstruction(OpCodes.Ldloc_S, operand));
-					inject.Add(InstructionHandlers.createMethodCall("ReikaKalseki.RoomEnvironmentals.RoomEnvironmentalsMod", "onRoomFindMachine", false, typeof(RoomController), typeof(SegmentEntity)));
+					inject.Add(InstructionHandlers.createMethodCall(typeof(RoomEnvironmentalsMod), "onRoomFindMachine", false, typeof(RoomController), typeof(SegmentEntity)));
 					FileLog.Log("Injecting "+inject.Count+" instructions: "+InstructionHandlers.toString(inject));
 					codes.InsertRange(start, inject);
 				}
@@ -65,11 +65,11 @@ namespace ReikaKalseki.RoomEnvironmentals {
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) {
 			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
 			try {
-				int loc = InstructionHandlers.getLastInstructionBefore(codes, codes.Count, OpCodes.Stfld, "RoomController", "mnVolume");
+				int loc = InstructionHandlers.getLastInstructionBefore(codes, codes.Count, OpCodes.Stfld, typeof(RoomController), "mnVolume");
 				FileLog.Log("Running patch, which found anchor "+InstructionHandlers.toString(codes, loc));
 				List<CodeInstruction> inject = new List<CodeInstruction>();
 				inject.Add(new CodeInstruction(OpCodes.Ldarg_0));
-				inject.Add(InstructionHandlers.createMethodCall("ReikaKalseki.RoomEnvironmentals.RoomEnvironmentalsMod", "onRoomCalculateEnvironment", false, typeof(int), typeof(RoomController)));
+				inject.Add(InstructionHandlers.createMethodCall(typeof(RoomEnvironmentalsMod), "onRoomCalculateEnvironment", false, typeof(int), typeof(RoomController)));
 				FileLog.Log("Injecting "+inject.Count+" instructions: "+InstructionHandlers.toString(inject));
 				codes.InsertRange(loc, inject);
 				FileLog.Log("Done patch "+MethodBase.GetCurrentMethod().DeclaringType);
@@ -92,7 +92,7 @@ namespace ReikaKalseki.RoomEnvironmentals {
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) {
 			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
 			try {
-				int start = InstructionHandlers.getInstruction(codes, 0, 0, OpCodes.Stfld, "MachineEntity", "mValue")+1;
+				int start = InstructionHandlers.getInstruction(codes, 0, 0, OpCodes.Stfld, typeof(MachineEntity), "mValue")+1;
 				int end = InstructionHandlers.getInstruction(codes, start, 0, OpCodes.Ret)-1;
 				FileLog.Log("Running patch, which found anchors "+InstructionHandlers.toString(codes, start)+" and "+InstructionHandlers.toString(codes, end));
 				if (end > start && end >= 0) {
@@ -100,7 +100,7 @@ namespace ReikaKalseki.RoomEnvironmentals {
 					FileLog.Log("Deletion of range successful, injecting new instructions");
 					List<CodeInstruction> inject = new List<CodeInstruction>();
 					inject.Add(new CodeInstruction(OpCodes.Ldarg_0));
-					inject.Add(InstructionHandlers.createMethodCall("ReikaKalseki.RoomEnvironmentals.RoomEnvironmentalsMod", "onRoomEnviroPPSCalculation", false, typeof(Room_Enviro)));
+					inject.Add(InstructionHandlers.createMethodCall(typeof(RoomEnvironmentalsMod), "onRoomEnviroPPSCalculation", false, typeof(Room_Enviro)));
 					FileLog.Log("Injecting "+inject.Count+" instructions: "+InstructionHandlers.toString(inject));
 					codes.InsertRange(start, inject);
 				}
@@ -127,7 +127,7 @@ namespace ReikaKalseki.RoomEnvironmentals {
 				FileLog.Log("Running patch, which found anchor "+InstructionHandlers.toString(codes, start));
 				List<CodeInstruction> inject = new List<CodeInstruction>();
 				inject.Add(new CodeInstruction(OpCodes.Ldarg_0));
-				inject.Add(InstructionHandlers.createMethodCall("ReikaKalseki.RoomEnvironmentals.RoomEnvironmentalsMod", "onRoomEnviroPPSCost", false, typeof(Room_Enviro)));
+				inject.Add(InstructionHandlers.createMethodCall(typeof(RoomEnvironmentalsMod), "onRoomEnviroPPSCost", false, typeof(Room_Enviro)));
 				FileLog.Log("Injecting "+inject.Count+" instructions: "+InstructionHandlers.toString(inject));
 				codes.InsertRange(start, inject);
 				FileLog.Log("Done patch "+MethodBase.GetCurrentMethod().DeclaringType);
@@ -149,12 +149,12 @@ namespace ReikaKalseki.RoomEnvironmentals {
 		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) {
 			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
 			try {
-				int loc = InstructionHandlers.getInstruction(codes, 0, 1, OpCodes.Stfld, "ConveyorEntity", "mnPenaltyFactor");
+				int loc = InstructionHandlers.getInstruction(codes, 0, 1, OpCodes.Stfld, typeof(ConveyorEntity), "mnPenaltyFactor");
 				FileLog.Log("Running patch, which found anchor "+InstructionHandlers.toString(codes, loc));
 				if (loc >= 0) {
 					List<CodeInstruction> inject = new List<CodeInstruction>();
 					inject.Add(new CodeInstruction(OpCodes.Ldarg_0));
-					inject.Add(InstructionHandlers.createMethodCall("ReikaKalseki.RoomEnvironmentals.RoomEnvironmentalsMod", "onBeltReactToEnvironment", false, typeof(int), typeof(ConveyorEntity)));
+					inject.Add(InstructionHandlers.createMethodCall(typeof(RoomEnvironmentalsMod), "onBeltReactToEnvironment", false, typeof(int), typeof(ConveyorEntity)));
 					//inject.Add(new CodeInstruction(OpCodes.Stfld, InstructionHandlers.convertFieldOperand("ConveyorEntity", "mnPenaltyFactor")));
 					FileLog.Log("Injecting "+inject.Count+" instructions: "+InstructionHandlers.toString(inject));
 					codes.InsertRange(loc, inject);
@@ -185,10 +185,10 @@ namespace ReikaKalseki.RoomEnvironmentals {
 					if (ci.opcode == OpCodes.Stfld) {
 						CodeInstruction cp = codes[i-1];
 						if (cp.opcode == OpCodes.Ldc_R4 || (cp.opcode == OpCodes.Call && cp.operand is MethodInfo && ((MethodInfo)cp.operand).DeclaringType.BaseType == typeof(FortressCraftMod))) { //Mod compat
-							FieldInfo look = cp.opcode == OpCodes.Call ? null : InstructionHandlers.convertFieldOperand("SurvivalGrapplingHook", "mrGrappleDebounce");
+							FieldInfo look = cp.opcode == OpCodes.Call ? null : InstructionHandlers.convertFieldOperand(typeof(SurvivalGrapplingHook), "mrGrappleDebounce");
 							if (ci.operand == look || cp.opcode == OpCodes.Call) {
 								FileLog.Log("Found match at pos "+InstructionHandlers.toString(codes, i));
-								CodeInstruction call = InstructionHandlers.createMethodCall("ReikaKalseki.RoomEnvironmentals.RoomEnvironmentalsMod", "getGrappleCooldownFromRoom", false, new Type[]{typeof(float)});
+								CodeInstruction call = InstructionHandlers.createMethodCall(typeof(RoomEnvironmentalsMod), "getGrappleCooldownFromRoom", false, new Type[]{typeof(float)});
 								codes.Insert(i, call);
 								i += 2;
 							}
