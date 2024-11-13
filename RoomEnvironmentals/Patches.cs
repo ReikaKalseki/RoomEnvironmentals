@@ -27,13 +27,11 @@ namespace ReikaKalseki.RoomEnvironmentals {
 			//FileLog.Log(System.Reflection.Assembly.GetExecutingAssembly().GetName().Name+": running patch roomcontroller from trace "+System.Environment.StackTrace);
 			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
 			try {
-				int start0 = InstructionHandlers.getInstruction(codes, 0, 0, OpCodes.Isinst, typeof(Room_Enviro))-1;
-				int start = InstructionHandlers.getLastInstructionBefore(codes, start0, codes[start0].opcode, ((LocalBuilder)codes[start0].operand).LocalIndex);
-				//start = InstructionHandlers.getLastInstructionBefore(codes, start0, codes[start0].opcode, ((LocalBuilder)codes[start0].operand).LocalIndex);
-				//start = InstructionHandlers.getLastInstructionBefore(codes, start0, codes[start0].opcode, ((LocalBuilder)codes[start0].operand).LocalIndex);
-				object operand = codes[start].operand;
+				int start = InstructionHandlers.getInstruction(codes, 0, 0, OpCodes.Stfld, typeof(RoomController), "mnMachinesInRoom")+1;
+				object operand = codes[InstructionHandlers.getFirstOpcode(codes, start, OpCodes.Ldloc_S)].operand;
 				int end = InstructionHandlers.getInstruction(codes, start, 0, OpCodes.Stfld, typeof(RoomController), "NumHeaters");
-				FileLog.Log("Running patch, which found anchors "+InstructionHandlers.toString(codes, start)+" and "+InstructionHandlers.toString(codes, end));
+				FileLog.Log("Running link patch, which found anchors "+InstructionHandlers.toString(codes, start)+" and "+InstructionHandlers.toString(codes, end));
+				//FileLog.Log("Codes are "+InstructionHandlers.toString(codes));
 				if (end > start && end >= 0) {
 					//InstructionHandlers.nullInstructions(codes, startAll, start);
 					codes.RemoveRange(start, end-start+1);
@@ -94,7 +92,7 @@ namespace ReikaKalseki.RoomEnvironmentals {
 			try {
 				int start = InstructionHandlers.getInstruction(codes, 0, 0, OpCodes.Stfld, typeof(MachineEntity), "mValue")+1;
 				int end = InstructionHandlers.getInstruction(codes, start, 0, OpCodes.Ret)-1;
-				FileLog.Log("Running patch, which found anchors "+InstructionHandlers.toString(codes, start)+" and "+InstructionHandlers.toString(codes, end));
+				FileLog.Log("Running PPS patch, which found anchors "+InstructionHandlers.toString(codes, start)+" and "+InstructionHandlers.toString(codes, end));
 				if (end > start && end >= 0) {
 					codes.RemoveRange(start, end-start+1);
 					FileLog.Log("Deletion of range successful, injecting new instructions");

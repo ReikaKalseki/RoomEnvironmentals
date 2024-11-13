@@ -8,7 +8,7 @@ using ReikaKalseki.FortressCore;
 
 namespace ReikaKalseki.RoomEnvironmentals
 {
-  public class RoomEnvironmentalsMod : FortressCraftMod
+  public class RoomEnvironmentalsMod : FCoreMod
   {
     public const string MOD_KEY = "ReikaKalseki.RoomEnvironmentals";
     public const string CUBE_KEY = "ReikaKalseki.RoomEnvironmentals_Key";
@@ -35,6 +35,10 @@ namespace ReikaKalseki.RoomEnvironmentals
     private static readonly Dictionary<RoomController, RoomMachineCache> roomCache = new Dictionary<RoomController, RoomMachineCache>();
     private static readonly Dictionary<ConveyorEntity, RoomController> beltRooms = new Dictionary<ConveyorEntity, RoomController>();
     private static readonly Dictionary<Room_Enviro, RoomController> enviroRooms = new Dictionary<Room_Enviro, RoomController>();
+    
+    public RoomEnvironmentalsMod() : base("RoomEnvironmentals") {
+    	
+    }
 
     public override ModRegistrationData Register()
     {
@@ -47,20 +51,7 @@ namespace ReikaKalseki.RoomEnvironmentals
         if (entry != null)
           ModCubeType = entry.CubeType;
          */        
-        var harmony = HarmonyInstance.Create("ReikaKalseki.RoomEnvironmentals");
-        HarmonyInstance.DEBUG = true;
-        //FileLog.Reset(); //clears output from other mods
-        FileLog.Log("Ran mod register, started harmony (harmony log)");
-        FUtil.log("Ran mod register, started harmony");
-        try {
-        	harmony.PatchAll(System.Reflection.Assembly.GetExecutingAssembly());
-        }
-        catch (Exception e) {
-			FileLog.Log("Caught exception when running patcher!");
-			FileLog.Log(e.Message);
-			FileLog.Log(e.StackTrace);
-			FileLog.Log(e.ToString());
-        }
+        runHarmony();
         
         return registrationData;
     }
@@ -96,6 +87,9 @@ namespace ReikaKalseki.RoomEnvironmentals
     }
     
     public static void onRoomFindMachine(RoomController c,  SegmentEntity e) {
+		if (e.mnRoomID == -1 && e.mRoomController == c)
+			e.mRoomController = null;
+    	
     	FUtil.log("Room controller @ "+new Coordinate(c)+" found entity "+e.GetType().Name+" @ "+new Coordinate(e));
     	
     	RoomMachineCache cache = getOrCreateCache(c);
