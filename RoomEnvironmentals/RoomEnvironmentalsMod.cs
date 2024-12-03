@@ -32,28 +32,17 @@ namespace ReikaKalseki.RoomEnvironmentals
     private const float C5_HEATER_VALUE = 24F;//18F;//12F;//10;//8;
     private const float GEO_HEATER_VALUE = 0.05F; //tiny because applies for each block 
     
+    private const float VENT_O2_FRACTION = 0.2F;
+    
     private static readonly Dictionary<RoomController, RoomMachineCache> roomCache = new Dictionary<RoomController, RoomMachineCache>();
-    private static readonly Dictionary<ConveyorEntity, RoomController> beltRooms = new Dictionary<ConveyorEntity, RoomController>();
-    private static readonly Dictionary<Room_Enviro, RoomController> enviroRooms = new Dictionary<Room_Enviro, RoomController>();
+    private static readonly Dictionary<Coordinate, RoomMachineCache> machineRoomLookup = new Dictionary<Coordinate, RoomMachineCache>();
     
     public RoomEnvironmentalsMod() : base("RoomEnvironmentals") {
     	
     }
 
-    public override ModRegistrationData Register()
-    {
-        ModRegistrationData registrationData = new ModRegistrationData();
-        //registrationData.RegisterEntityHandler(MOD_KEY);
-        /*
-        TerrainDataEntry entry;
-        TerrainDataValueEntry valueEntry;
-        TerrainData.GetCubeByKey(CUBE_KEY, out entry, out valueEntry);
-        if (entry != null)
-          ModCubeType = entry.CubeType;
-         */        
+    protected override void loadMod(ModRegistrationData registrationData) {
         runHarmony();
-        
-        return registrationData;
     }
     
     public static float getGrappleCooldownFromRoom(float orig) {
@@ -86,14 +75,14 @@ namespace ReikaKalseki.RoomEnvironmentals
     	return ep.CooledRoomLatch > 0.2 || ep.HeatedRoomLatch > 0.2 || ep.ToxicRoomLatch > 0.2;
     }
     
-    public static void onRoomFindMachine(RoomController c,  SegmentEntity e) {
+    public static void onRoomFindMachine(RoomController c, SegmentEntity e) {
 		if (e.mnRoomID == -1 && e.mRoomController == c)
 			e.mRoomController = null;
     	
-    	FUtil.log("Room controller @ "+new Coordinate(c)+" found entity "+e.GetType().Name+" @ "+new Coordinate(e));
+    	//FUtil.log("Room controller @ "+new Coordinate(c)+" found entity "+e.GetType().Name+" @ "+new Coordinate(e));
     	
     	RoomMachineCache cache = getOrCreateCache(c);
-    	bool significant = false;
+    	bool cacheRoomMachine = false;
     	switch(e.mType) {
     		case eSegmentEntity.Room_Enviro:
 	    		Room_Enviro re = e as Room_Enviro;
@@ -105,57 +94,128 @@ namespace ReikaKalseki.RoomEnvironmentals
 					if (re.mValue == (ushort) 2)
 						cache.vaporPower += VAPOR_FACTOR;
 	    		}
-	    		enviroRooms.Remove(re);
-	    		enviroRooms.Add(re, cache.controller);
+	    		cacheRoomMachine = true;
     		break;
     		case eSegmentEntity.CCCCC:
 	    		CCCCC c5 = e as CCCCC;
 	    		if (c5.mbIsCenter && c5.mMBMState == MachineEntity.MBMState.Linked && CCCCC.ActiveAndWorking) {
 	    			cache.heaterPower += HEATER_FACTOR*C5_HEATER_VALUE;
-	    			significant = true;
 	    		}
 	    	break;
 	    	case eSegmentEntity.BlastFurnace:
 	    		BlastFurnace f = e as BlastFurnace;
 	    		if (f.mOperatingState == BlastFurnace.OperatingState.Smelting || f.mOperatingState == BlastFurnace.OperatingState.WaitingOnBasin) {
 	    			cache.heaterPower += HEATER_FACTOR*BLAST_FURNACE_HEATER_VALUE;
-	    			significant = true;
 	    		}
+	    		cacheRoomMachine = true;
 	    	break;
 	    	case eSegmentEntity.OreSmelter:
 	    		OreSmelter s = e as OreSmelter;
 	    		if (s.mrTemperature > 5 && s.mrTargetTemp > 100) {
 	    			cache.heaterPower += HEATER_FACTOR*SMELTER_HEATER_VALUE*s.mrTemperature/s.mrTargetTemp;
-	    			significant = true;
 	    		}
+	    		cacheRoomMachine = true;
+	    	break;
+	    	case eSegmentEntity.ForcedInduction:
+	    		ForcedInduction ind = e as ForcedInduction;
+	    		
+	    		cacheRoomMachine = true;
 	    	break;
 	    	case eSegmentEntity.ContinuousCastingBasin:
 	    		if ((e as ContinuousCastingBasin).mMBMState == MachineEntity.MBMState.Linked) {
 	    			cache.heaterPower += HEATER_FACTOR*BLAST_BASIN_HEATER_VALUE;
-	    			significant = true;
 	    		}
+	    		cacheRoomMachine = true;
 	    	break;
 	    	case eSegmentEntity.GeothermalGenerator:
 	    		GeothermalGenerator gen = e as GeothermalGenerator;
 	    		if (gen.mMBMState == MachineEntity.MBMState.Linked) {
-	    			long y = gen.mShaftEndY - 4611686017890516992L;
+	    			long y = gen.mShaftEndY - WorldUtil.COORD_OFFSET;
 	    			if (y <= -1000) {
 	    				float hf = Math.Min(1F, (Math.Abs(y)-1000)/120F);
 		    			cache.heaterPower += HEATER_FACTOR*GEO_HEATER_VALUE*hf;
-	    				significant = true;
 	    			}
 	    		}
+	    		cacheRoomMachine = true;
 	    	break;
 	    	case eSegmentEntity.Conveyor:
 	    		ConveyorEntity belt = e as ConveyorEntity;
 	    		//cache.addBelt(e as ConveyorEntity);
 	    		//Coordinate loc = new Coordinate(e);
-	    		beltRooms.Remove(belt);
-	    		beltRooms.Add(belt, cache.controller);
+	    		cacheRoomMachine = true;
+	    	break;
+	    	case eSegmentEntity.PyrothermicGenerator:
+	    		PyrothermicGenerator pgen = e as PyrothermicGenerator;
+	    		//cache.addBelt(e as ConveyorEntity);
+	    		//Coordinate loc = new Coordinate(e);
+	    		cacheRoomMachine = true;
 	    	break;
     	}
-    	if (significant)
-    		FUtil.log("Room controller @ "+new Coordinate(c)+" found "+Enum.GetName(typeof(eSegmentEntity), e)+" "+e+" and now has "+cache);
+    	if (cacheRoomMachine) {
+    		machineRoomLookup[new Coordinate(e)] = cache;
+    	}
+    	//if (significant) do not do this, it blows up the logs
+    	//	FUtil.log("Room controller @ "+new Coordinate(c)+" found "+Enum.GetName(typeof(eSegmentEntity), e)+" "+e+" and now has "+cache);
+    }
+    
+    public static void tickPTG(PyrothermicGenerator gen) {
+    	float o2 = getO2StarvationFactor(gen);
+    	if (o2 < 1) {
+    		float e = computePTGEfficiency(gen);
+	    	if (e < 1) {
+    			float newE = 1-((1-e)*o2);
+    			gen.mrEfficiency = newE;
+    			float scale = newE;
+				if (DifficultySettings.mbCasualResource) //from PTG constructor
+					scale *= 3F;
+				if (DifficultySettings.mbEasyPower)
+					scale *= 2.5F;
+				if (DifficultySettings.mbRushMode)
+					scale *= 5F;
+				gen.mrPowerGenerationScalar = scale;
+	    	}
+    	}
+    }
+    
+    public static void tickSmelter(OreSmelter furn) {
+    	int y = (int)(furn.mnY-WorldUtil.COORD_OFFSET);
+    	if (y < -40) {
+	    	bool air = getO2StarvationFactor(furn) < 0.1F;
+	    	furn.mbTooDeep = !air;
+	    	if (air) {
+	    		float time = 15;
+				if (DifficultySettings.mbCasualResource) //from OreSmelter constructor
+					time = 5;
+				if (DifficultySettings.mbRushMode)
+					time = 3;
+				if (furn.mValue == 1)
+					time /= 2;
+				furn.mrSmeltTime = time;
+	    	}
+	    	else {
+	    		furn.mrSmeltTime = 1024;
+	    	}
+    	}
+    }
+    
+    public static void checkForcedInductionDepth(ForcedInduction duc) {
+    	int y = (int)(duc.mnY-WorldUtil.COORD_OFFSET);
+    	if (y < -32)
+    		duc.mbTooDeep = getO2StarvationFactor(duc) >= 0.1F;
+    }
+    
+    public static float computePTGEfficiency(SegmentEntity e) {
+    	return e.mnY;
+    }
+    
+    public static float computePTGEfficiency(long y) {
+    	y -= WorldUtil.COORD_OFFSET;
+		if (y < 0) {
+			y += 25L;
+			float num = ((y*3)+100)/100F;
+			return Mathf.Clamp(num, 0.025F, 1);
+		}
+    	return 1;
     }
     
     public static int onRoomCalculateEnvironment(int originalVolume, RoomController c) {
@@ -185,6 +245,26 @@ namespace ReikaKalseki.RoomEnvironmentals
     	return c.mrHeatModulation > -1 && c.mrHeatModulation < 1;
     }
     
+    private static int getScrubberCount(RoomController c) { //see ScanWall @ L930
+    	return c.NumFans;
+    }
+    
+    private static int getVentCount(RoomController c) { //see ScanWall @ L930
+    	return c.NumFilters;
+    }
+    
+    public static float getO2StarvationFactor(MachineEntity e) {
+    	RoomMachineCache cache;
+    	Coordinate cc = new Coordinate(e);
+    	if (machineRoomLookup.TryGetValue(cc, out cache)) {
+    		RoomController c = cache.controller;
+    		if (c != null) {
+    			return Mathf.Max(0, 1-c.mrCleanRating/*getVentCount(c)*VENT_O2_FRACTION*/);
+    		}
+    	}
+    	return 1;
+    }
+    
     private static int getSurfaceArea(RoomController c) {
     	int sizeX = -c.mRoomExtentXNeg + c.mRoomExtentXPlus - 1;
 		int sizeY = -c.mRoomExtentYNeg + c.mRoomExtentYPlus - 1;
@@ -193,10 +273,10 @@ namespace ReikaKalseki.RoomEnvironmentals
     }
     
     public static int onBeltReactToEnvironment(int original, ConveyorEntity e) {
-    	//Coordinate loc = null;
-    	RoomController rc = null;
-    	if (beltRooms.TryGetValue(e, out rc)) {
-	    	if (rc != null && rc.mrHeatModulation >= 1) {
+    	RoomMachineCache cache;
+    	Coordinate c = new Coordinate(e);
+    	if (machineRoomLookup.TryGetValue(c, out cache)) {
+	    	if (cache.controller != null && cache.controller.mrHeatModulation >= 1) {
 			   	e.mbConveyorFrozen = false;
 			   	e.mnCurrentPenaltyFactor = 0;
 			   	return 0;
@@ -211,9 +291,9 @@ namespace ReikaKalseki.RoomEnvironmentals
     }
     
     public static void onRoomEnviroPPSCost(Room_Enviro e) {
-    	RoomController rc = null;
-	   	if (enviroRooms.TryGetValue(e, out rc)) {
-    		RoomMachineCache cache = getOrCreateCache(rc);
+    	RoomMachineCache cache;
+    	Coordinate c = new Coordinate(e);
+    	if (machineRoomLookup.TryGetValue(c, out cache)) {
     		e.PPS = getRoomEnviroPPS(e)*cache.getPowerRatio();
 	    	//FUtil.log("Overriding room enviro @ "+new Coordinate(e)+" to dynamic consumption "+e.PPS+" PPS");
     	}

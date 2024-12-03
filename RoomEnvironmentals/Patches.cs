@@ -178,21 +178,82 @@ namespace ReikaKalseki.RoomEnvironmentals {
 			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
 			try {
 				FileLog.Log("Running patch "+MethodBase.GetCurrentMethod().DeclaringType);
+				FieldInfo set = InstructionHandlers.convertFieldOperand(typeof(SurvivalGrapplingHook), "mrGrappleDebounce");
 				for (int i = 0; i < codes.Count; i++) {
 					CodeInstruction ci = codes[i];
-					if (ci.opcode == OpCodes.Stfld) {
-						CodeInstruction cp = codes[i-1];
-						if (cp.opcode == OpCodes.Ldc_R4 || (cp.opcode == OpCodes.Call && cp.operand is MethodInfo && ((MethodInfo)cp.operand).DeclaringType.BaseType == typeof(FortressCraftMod))) { //Mod compat
-							FieldInfo look = cp.opcode == OpCodes.Call ? null : InstructionHandlers.convertFieldOperand(typeof(SurvivalGrapplingHook), "mrGrappleDebounce");
-							if (ci.operand == look || cp.opcode == OpCodes.Call) {
-								FileLog.Log("Found match at pos "+InstructionHandlers.toString(codes, i));
-								CodeInstruction call = InstructionHandlers.createMethodCall(typeof(RoomEnvironmentalsMod), "getGrappleCooldownFromRoom", false, new Type[]{typeof(float)});
-								codes.Insert(i, call);
-								i += 2;
-							}
-						}
+					if (ci.opcode == OpCodes.Stfld && InstructionHandlers.matchOperands(ci.operand, set)) {
+						FileLog.Log("Found match at pos "+InstructionHandlers.toString(codes, i));
+						codes.Insert(i, InstructionHandlers.createMethodCall(typeof(RoomEnvironmentalsMod), "getGrappleCooldownFromRoom", false, new Type[]{typeof(float)}));
+						i += 2;
 					}
 				}
+				FileLog.Log("Done patch "+MethodBase.GetCurrentMethod().DeclaringType);
+			}
+			catch (Exception e) {
+				FileLog.Log("Caught exception when running patch "+MethodBase.GetCurrentMethod().DeclaringType+"!");
+				FileLog.Log(e.Message);
+				FileLog.Log(e.StackTrace);
+				FileLog.Log(e.ToString());
+			}
+			return codes.AsEnumerable();
+		}
+	}
+	
+	[HarmonyPatch(typeof(PyrothermicGenerator))]
+	[HarmonyPatch("LowFrequencyUpdate")]
+	public static class PTGUpdateHook {
+		
+		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) {
+			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
+			try {
+				FileLog.Log("Running patch "+MethodBase.GetCurrentMethod().DeclaringType);
+				InstructionHandlers.patchInitialHook(codes, new CodeInstruction(OpCodes.Ldarg_0), InstructionHandlers.createMethodCall(typeof(RoomEnvironmentalsMod), "tickPTG", false, new Type[]{typeof(PyrothermicGenerator)}));
+				FileLog.Log("Done patch "+MethodBase.GetCurrentMethod().DeclaringType);
+			}
+			catch (Exception e) {
+				FileLog.Log("Caught exception when running patch "+MethodBase.GetCurrentMethod().DeclaringType+"!");
+				FileLog.Log(e.Message);
+				FileLog.Log(e.StackTrace);
+				FileLog.Log(e.ToString());
+			}
+			return codes.AsEnumerable();
+		}
+	}
+	
+	[HarmonyPatch(typeof(OreSmelter))]
+	[HarmonyPatch("LowFrequencyUpdate")]
+	public static class SmelterUpdateHook {
+		
+		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) {
+			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
+			try {
+				FileLog.Log("Running patch "+MethodBase.GetCurrentMethod().DeclaringType);
+				InstructionHandlers.patchInitialHook(codes, new CodeInstruction(OpCodes.Ldarg_0), InstructionHandlers.createMethodCall(typeof(RoomEnvironmentalsMod), "tickSmelter", false, new Type[]{typeof(OreSmelter)}));
+				FileLog.Log("Done patch "+MethodBase.GetCurrentMethod().DeclaringType);
+			}
+			catch (Exception e) {
+				FileLog.Log("Caught exception when running patch "+MethodBase.GetCurrentMethod().DeclaringType+"!");
+				FileLog.Log(e.Message);
+				FileLog.Log(e.StackTrace);
+				FileLog.Log(e.ToString());
+			}
+			return codes.AsEnumerable();
+		}
+	}
+	
+	[HarmonyPatch(typeof(ForcedInduction))]
+	[HarmonyPatch("LowFrequencyUpdate")]
+	public static class ForcedInductionDeepCheckHook {
+		
+		static IEnumerable<CodeInstruction> Transpiler(IEnumerable<CodeInstruction> instructions) {
+			List<CodeInstruction> codes = new List<CodeInstruction>(instructions);
+			try {
+				FileLog.Log("Running patch "+MethodBase.GetCurrentMethod().DeclaringType);
+				int idx = InstructionHandlers.getInstruction(codes, 0, 0, OpCodes.Callvirt, typeof(OreSmelterInterface), "SetSmelterSupportsTier4", true, new Type[]{typeof(bool)});
+				codes.InsertRange(idx+1, new List<CodeInstruction>(){
+					new CodeInstruction(OpCodes.Ldarg_0),
+					InstructionHandlers.createMethodCall(typeof(RoomEnvironmentalsMod), "checkForcedInductionDepth", false, new Type[]{typeof(ForcedInduction)})
+				});
 				FileLog.Log("Done patch "+MethodBase.GetCurrentMethod().DeclaringType);
 			}
 			catch (Exception e) {
